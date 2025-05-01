@@ -1,0 +1,29 @@
+﻿@model IEnumerable<Appointment>
+<h2>Your Appointments</h2>
+<a asp-action="Create">+ New Appointment</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Location</th>
+            <th>Start</th>
+            <th>End</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var a in Model)
+        {
+            <tr>
+                <td>@a.Name</td>
+                <td>@a.Location</td>
+                <td>@a.StartTime</td>
+                <td>@a.EndTime</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-sm btn-warning">Edit</a>
+                    <a asp-action="Delete" asp-route-id="@a.Id" class="btn btn-sm btn-danger">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
