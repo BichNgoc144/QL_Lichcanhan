@@ -1,18 +1,25 @@
-﻿@model IEnumerable<Appointment>
-<h2>Your Appointments</h2>
-<a asp-action="Create">+ New Appointment</a>
+﻿@model QL_Lichcanhan.Models.AppointmentIndexViewModel
 
-<table>
+@{
+    ViewData["Title"] = "Lịch của bạn";
+}
+
+<a asp-action="Create" class="btn btn-primary mb-3">+ Tạo cuộc hẹn mới</a>
+
+<h2>Lịch cá nhân</h2>
+
+<table class="table table-bordered">
     <thead>
         <tr>
-            <th>Name</th>
-            <th>Location</th>
-            <th>Start</th>
-            <th>End</th>
+            <th>Tiêu đề</th>
+            <th>Địa điểm</th>
+            <th>Bắt đầu</th>
+            <th>Kết thúc</th>
+            <th>Thao tác</th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var a in Model)
+        @foreach (var a in Model.PersonalAppointments)
         {
             <tr>
                 <td>@a.Name</td>
@@ -20,10 +27,43 @@
                 <td>@a.StartTime</td>
                 <td>@a.EndTime</td>
                 <td>
-                    <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-sm btn-warning">Edit</a>
-                    <a asp-action="Delete" asp-route-id="@a.Id" class="btn btn-sm btn-danger">Delete</a>
+                    <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-sm btn-warning">Sửa</a>
+                    <a asp-action="Delete" asp-route-id="@a.Id" class="btn btn-sm btn-danger">Xoá</a>
                 </td>
             </tr>
         }
     </tbody>
 </table>
+
+<h2 class="mt-5">Lịch nhóm tham gia</h2>
+
+@if (Model.GroupAppointments.Any())
+{
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Tiêu đề</th>
+                <th>Địa điểm</th>
+                <th>Bắt đầu</th>
+                <th>Kết thúc</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var g in Model.GroupAppointments)
+            {
+                <tr>
+                    <td>@g.Name</td>
+                    <td>@g.Location</td>
+                    <td>@g.StartTime</td>
+                    <td>@g.EndTime</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>Không có lịch nhóm nào.</p>
+}
+
+               

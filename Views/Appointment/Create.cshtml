@@ -1,50 +1,74 @@
-﻿@model QL_Lichcanhan.Models.Appointment
+﻿@model QL_Lichcanhan.Models.AppointmentCreateViewModel
 
 @{
-    ViewData["Title"] = "Create Appointment";
+    ViewData["Title"] = "Tạo Cuộc Hẹn";
 }
 
 <h2>@ViewData["Title"]</h2>
 
 <form asp-action="Create" method="post" class="mt-3">
+
     <div class="mb-3">
-        <label asp-for="Name" class="form-label"></label>
-        <input asp-for="Name" class="form-control" />
-        <span asp-validation-for="Name" class="text-danger"></span>
+        <label asp-for="Appointment.Name" class="form-label"></label>
+        <input asp-for="Appointment.Name" class="form-control" />
+        <span asp-validation-for="Appointment.Name" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
-        <label asp-for="Location" class="form-label"></label>
-        <input asp-for="Location" class="form-control" />
-        <span asp-validation-for="Location" class="text-danger"></span>
+        <label asp-for="Appointment.Location" class="form-label"></label>
+        <input asp-for="Appointment.Location" class="form-control" />
+        <span asp-validation-for="Appointment.Location" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
-        <label asp-for="StartTime" class="form-label"></label>
-        <input asp-for="StartTime" class="form-control" type="datetime-local" />
-        <span asp-validation-for="StartTime" class="text-danger"></span>
+        <label asp-for="Appointment.StartTime" class="form-label"></label>
+        <input asp-for="Appointment.StartTime" type="datetime-local" class="form-control" />
+        <span asp-validation-for="Appointment.StartTime" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
-        <label asp-for="EndTime" class="form-label"></label>
-        <input asp-for="EndTime" class="form-control" type="datetime-local" />
-        <span asp-validation-for="EndTime" class="text-danger"></span>
+        <label asp-for="Appointment.EndTime" class="form-label"></label>
+        <input asp-for="Appointment.EndTime" type="datetime-local" class="form-control" />
+        <span asp-validation-for="Appointment.EndTime" class="text-danger"></span>
     </div>
 
-    <button type="submit" class="btn btn-primary">Save</button>
+    <div class="mb-3">
+        <label asp-for="Appointment.Note" class="form-label">Ghi chú (tuỳ chọn)</label>
+        <textarea asp-for="Appointment.Note" class="form-control"></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="EnteredEmails" class="form-label">Thêm email người tham gia (cách nhau bởi dấu phẩy):</label>
+        <textarea asp-for="EnteredEmails" class="form-control" rows="2" placeholder="vd: user1@gmail.com, user2@example.com"></textarea>
+    </div>
+
+    @* Hiển thị cảnh báo xung đột nhóm *@
+    @if (ViewBag.ConflictMessage != null)
+    {
+        <div class="alert alert-warning">@ViewBag.ConflictMessage</div>
+
+        <button type="submit" name="ForceSave" value="true" class="btn btn-danger">
+            Không tham gia nhóm (vẫn lưu)
+        </button>
+        <a asp-action="Index" class="btn btn-secondary">Về Trang Chủ</a>
+    }
+    else
+    {
+        <button type="submit" class="btn btn-primary">Tạo cuộc hẹn</button>
+        <a asp-action="Index" class="btn btn-secondary">Về Trang Chủ</a>
+    }
+
 </form>
 
-@* Hiển thị lỗi ModelState nếu có *@
 @if (!ViewData.ModelState.IsValid)
 {
-    <div class="alert alert-danger">
+    <div class="alert alert-danger mt-3">
         @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
         {
             <div>@error.ErrorMessage</div>
         }
     </div>
 }
-
 
 @section Scripts {
     @{

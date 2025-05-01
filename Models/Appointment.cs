@@ -25,6 +25,21 @@ namespace QL_Lichcanhan.Models
         public IdentityUser? User { get; set; }
 
         public Reminder? Reminder { get; set; }
+
+        public bool IsGroupMeeting { get; set; } = false;
+
+        public ICollection<GroupParticipant> GroupParticipants { get; set; }
+
+        public string? Note { get; set; }
+    }
+
+    public class GroupParticipant
+    {
+        public int Id { get; set; }
+        public int AppointmentId { get; set; }
+        public string UserId { get; set; }
+        public Appointment Appointment { get; set; }
+        public IdentityUser User { get; set; }
     }
 
 }

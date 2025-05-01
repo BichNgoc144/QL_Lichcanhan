@@ -13,6 +13,8 @@ namespace QL_Lichcanhan.Data
 
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<Reminder> Reminders { get; set; }
+        public DbSet<GroupParticipant> GroupParticipants { get; set; }
+
 
     }
 }

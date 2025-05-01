@@ -22,86 +22,198 @@ namespace QL_Lichcanhan.Controllers
         public async Task<IActionResult> Index()
         {
             var user = await _userManager.GetUserAsync(User);
-            var appointments = _context.Appointments
-                .Where(a => a.UserId == user.Id)
-                .ToList();
-            return View(appointments);
+
+            var personalAppointments = await _context.Appointments
+                .Where(a => a.UserId == user.Id && !a.IsGroupMeeting)
+                .ToListAsync();
+
+            var groupAppointments = await _context.GroupParticipants
+                .Include(g => g.Appointment)
+                .Where(g => g.UserId == user.Id)
+                .Select(g => g.Appointment)
+                .ToListAsync();
+
+            var viewModel = new AppointmentIndexViewModel
+            {
+                PersonalAppointments = personalAppointments,
+                GroupAppointments = groupAppointments
+            };
+
+            return View(viewModel);
         }
 
-        // Hiển thị form tạo cuộc hẹn
-        [Authorize]
         public IActionResult Create()
         {
-            return View();
+            var model = new AppointmentCreateViewModel
+            {
+                Appointment = new Appointment()
+            };
+            return View(model);
         }
 
-        // Xử lý khi người dùng submit form tạo cuộc hẹn
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Appointment appointment)
+        public async Task<IActionResult> Create(AppointmentCreateViewModel model)
         {
             var user = await _userManager.GetUserAsync(User);
+            var appointment = model.Appointment;
 
-            // Kiểm tra thời gian không hợp lệ
             if (appointment.EndTime <= appointment.StartTime)
             {
-                ModelState.AddModelError("", "End time must be after start time.");
-                return View(appointment);
+                ModelState.AddModelError("", "Thời gian kết thúc phải sau thời gian bắt đầu.");
+                return View(model);
             }
 
-            // Kiểm tra trùng khung giờ với cuộc hẹn khác
-            bool conflict = _context.Appointments.Any(a =>
+            bool personalConflict = _context.Appointments.Any(a =>
                 a.UserId == user.Id &&
                 a.StartTime < appointment.EndTime &&
                 a.EndTime > appointment.StartTime);
 
-            if (conflict)
+            if (personalConflict)
             {
-                ModelState.AddModelError("", "You already have another appointment at this time.");
-                return View(appointment);
+                ModelState.AddModelError("", "Bạn đã có lịch cá nhân trùng thời gian.");
+                return View(model);
             }
 
-            // Nếu không trùng thì lưu
+            var groupConflict = await _context.GroupParticipants
+                .Include(g => g.Appointment)
+                .Where(g => g.UserId == user.Id &&
+                            g.Appointment.StartTime < appointment.EndTime &&
+                            g.Appointment.EndTime > appointment.StartTime)
+                .FirstOrDefaultAsync();
+
+            if (groupConflict != null && !model.ForceSave)
+            {
+                ViewBag.ConflictMessage = "Bạn đang có cuộc họp nhóm trùng giờ. Bạn có muốn tham gia cuộc họp nhóm không?";
+                return View(model);
+            }
+
+            if (groupConflict != null && model.ForceSave)
+            {
+                _context.GroupParticipants.Remove(groupConflict);
+                await _context.SaveChangesAsync();
+            }
+
+            List<IdentityUser> validUsers = new();
+            if (!string.IsNullOrWhiteSpace(model.EnteredEmails))
+            {
+                var emails = model.EnteredEmails
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(e => e.Trim().ToLower())
+                    .Distinct();
+
+                foreach (var email in emails)
+                {
+                    var foundUser = await _userManager.FindByEmailAsync(email);
+                    if (foundUser == null)
+                    {
+                        ModelState.AddModelError("", $"Không tìm thấy người dùng với email: {email}");
+                        return View(model);
+                    }
+                    if (foundUser.Id != user.Id)
+                    {
+                        validUsers.Add(foundUser);
+                    }
+                }
+            }
+
             appointment.UserId = user.Id;
+            appointment.IsGroupMeeting = validUsers.Any();
             _context.Appointments.Add(appointment);
             await _context.SaveChangesAsync();
+
+            if (appointment.IsGroupMeeting)
+            {
+                foreach (var u in validUsers)
+                {
+                    _context.GroupParticipants.Add(new GroupParticipant
+                    {
+                        AppointmentId = appointment.Id,
+                        UserId = u.Id
+                    });
+                }
+                await _context.SaveChangesAsync();
+            }
 
             return RedirectToAction(nameof(Index));
         }
 
-
-        // GET: Appointment/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
 
             var appointment = await _context.Appointments.FindAsync(id);
-            if (appointment == null || appointment.UserId != _userManager.GetUserId(User))
-                return Unauthorized();
-
-            return View(appointment);
-        }
-
-        // POST: Appointment/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Appointment appointment)
-        {
-            if (id != appointment.Id) return NotFound();
+            if (appointment == null) return NotFound();
 
             var userId = _userManager.GetUserId(User);
-            appointment.UserId = userId;
+            bool isOwner = appointment.UserId == userId;
+            bool isParticipant = await _context.GroupParticipants.AnyAsync(g => g.AppointmentId == id && g.UserId == userId);
 
-            if (ModelState.IsValid)
+            if (!isOwner && !isParticipant) return Unauthorized();
+
+            var participantEmails = await _context.GroupParticipants
+                .Where(g => g.AppointmentId == appointment.Id)
+                .Select(g => g.User.Email)
+                .ToListAsync();
+
+            var viewModel = new AppointmentEditViewModel
             {
-                _context.Update(appointment);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            return View(appointment);
+                Appointment = appointment,
+                CurrentParticipantEmails = participantEmails
+            };
+
+            return View(viewModel);
         }
 
-        // GET: Appointment/Delete/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, AppointmentEditViewModel model)
+        {
+            if (id != model.Appointment.Id) return NotFound();
+
+            var userId = _userManager.GetUserId(User);
+            var appointment = await _context.Appointments.FindAsync(id);
+            if (appointment == null) return NotFound();
+
+            bool isOwner = appointment.UserId == userId;
+            if (!isOwner) return Unauthorized();
+
+            appointment.Name = model.Appointment.Name;
+            appointment.Location = model.Appointment.Location;
+            appointment.StartTime = model.Appointment.StartTime;
+            appointment.EndTime = model.Appointment.EndTime;
+
+            if (!string.IsNullOrWhiteSpace(model.EnteredEmails))
+            {
+                var emails = model.EnteredEmails
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(e => e.Trim().ToLower())
+                    .Distinct();
+
+                foreach (var email in emails)
+                {
+                    var user = await _userManager.FindByEmailAsync(email);
+                    if (user != null && user.Id != userId)
+                    {
+                        bool alreadyParticipant = await _context.GroupParticipants
+                            .AnyAsync(g => g.AppointmentId == id && g.UserId == user.Id);
+                        if (!alreadyParticipant)
+                        {
+                            _context.GroupParticipants.Add(new GroupParticipant
+                            {
+                                AppointmentId = id,
+                                UserId = user.Id
+                            });
+                        }
+                    }
+                }
+            }
+
+            _context.Update(appointment);
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
@@ -113,7 +225,6 @@ namespace QL_Lichcanhan.Controllers
             return View(appointment);
         }
 
-        // POST: Appointment/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
@@ -125,7 +236,5 @@ namespace QL_Lichcanhan.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
-
     }
-
 }
