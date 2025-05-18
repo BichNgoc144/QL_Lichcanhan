@@ -19,53 +19,7 @@ namespace QL_Lichcanhan.Controllers
             _userManager = userManager;
         }
 
-        //public async Task<IActionResult> Index()
-        //{
-        //    var user = await _userManager.GetUserAsync(User);
-
-        //    var personalAppointments = await _context.Appointments
-        //        .Where(a => a.UserId == user.Id && !a.IsGroupMeeting)
-        //        .ToListAsync();
-
-        //    var groupAppointments = await _context.GroupParticipants
-        //        .Include(g => g.Appointment)
-        //        .Where(g => g.UserId == user.Id)
-        //        .Select(g => g.Appointment)
-        //        .ToListAsync();
-
-        //    var viewModel = new AppointmentIndexViewModel
-        //    {
-        //        PersonalAppointments = personalAppointments,
-        //        GroupAppointments = groupAppointments
-        //    };
-
-        //    return View(viewModel);
-        //}
-
-        //public async Task<IActionResult> Index()
-        //{
-        //    var user = await _userManager.GetUserAsync(User);
-        //    var now = DateTime.Now;
-
-        //    var personalAppointments = await _context.Appointments
-        //        .Where(a => a.UserId == user.Id && !a.IsGroupMeeting && a.EndTime > now)
-        //        .ToListAsync();
-
-        //    var groupAppointments = await _context.GroupParticipants
-        //        .Include(g => g.Appointment)
-        //        .Where(g => g.UserId == user.Id && g.Appointment.EndTime > now)
-        //        .Select(g => g.Appointment)
-        //        .ToListAsync();
-
-        //    var viewModel = new AppointmentIndexViewModel
-        //    {
-        //        PersonalAppointments = personalAppointments,
-        //        GroupAppointments = groupAppointments
-        //    };
-
-        //    return View(viewModel);
-        //}
-
+     
         public async Task<IActionResult> Index()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -204,8 +158,17 @@ namespace QL_Lichcanhan.Controllers
                 await _context.SaveChangesAsync();
             }
 
+
             if (appointment.IsGroupMeeting)
             {
+                // Thêm người tạo vào danh sách tham gia nhóm
+                _context.GroupParticipants.Add(new GroupParticipant
+                {
+                    AppointmentId = appointment.Id,
+                    UserId = user.Id
+                });
+
+                // Thêm các người dùng khác
                 foreach (var u in validUsers)
                 {
                     _context.GroupParticipants.Add(new GroupParticipant
@@ -214,8 +177,10 @@ namespace QL_Lichcanhan.Controllers
                         UserId = u.Id
                     });
                 }
+
                 await _context.SaveChangesAsync();
             }
+
 
             return RedirectToAction(nameof(Index));
         }
@@ -375,7 +340,7 @@ namespace QL_Lichcanhan.Controllers
                 GroupAppointments = groupAppointments
             };
 
-            return View(viewModel); // tạo view tương tự Index.cshtml
+            return View(viewModel); 
         }
 
     }
