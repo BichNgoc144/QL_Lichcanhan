@@ -15,6 +15,8 @@ namespace QL_Lichcanhan.Data
         public DbSet<Reminder> Reminders { get; set; }
         public DbSet<GroupParticipant> GroupParticipants { get; set; }
 
+        public DbSet<UserNotification> UserNotifications { get; set; }
+
 
     }
 }

@@ -1,0 +1,39 @@
+﻿@model IEnumerable<QL_Lichcanhan.Models.UserNotification>
+
+<h2 class="mb-4">Nhắc hẹn của bạn</h2>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">Không có nhắc hẹn nào.</div>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var item in Model)
+        {
+            var isRead = item.IsRead ? "bg-light text-muted" : "";
+
+            <li class="list-group-item d-flex justify-content-between align-items-center @isRead">
+                <div>
+                    <h5 class="mb-1">@item.Appointment?.Name</h5>
+                    <p class="mb-1">@item.Message</p>
+                    <small>
+                        <i class="text-secondary">Thời gian hẹn:</i> @item.Appointment?.StartTime.ToString("HH:mm dd/MM/yyyy")<br />
+                        <i class="text-secondary">Nhắc lúc:</i> @item.ReminderTime?.ToString("HH:mm dd/MM/yyyy")
+                    </small>
+                </div>
+                @if (!item.IsRead)
+                {
+                    <form asp-controller="Reminder" asp-action="MarkAsRead" method="post">
+                        <input type="hidden" name="id" value="@item.Id" />
+                        <button type="submit" class="btn btn-sm btn-outline-success">Đánh dấu đã đọc</button>
+                    </form>
+                }
+                else
+                {
+                    <span class="badge bg-secondary">Đã đọc</span>
+                }
+            </li>
+        }
+    </ul>
+}

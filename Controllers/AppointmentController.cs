@@ -19,28 +19,99 @@ namespace QL_Lichcanhan.Controllers
             _userManager = userManager;
         }
 
+        //public async Task<IActionResult> Index()
+        //{
+        //    var user = await _userManager.GetUserAsync(User);
+
+        //    var personalAppointments = await _context.Appointments
+        //        .Where(a => a.UserId == user.Id && !a.IsGroupMeeting)
+        //        .ToListAsync();
+
+        //    var groupAppointments = await _context.GroupParticipants
+        //        .Include(g => g.Appointment)
+        //        .Where(g => g.UserId == user.Id)
+        //        .Select(g => g.Appointment)
+        //        .ToListAsync();
+
+        //    var viewModel = new AppointmentIndexViewModel
+        //    {
+        //        PersonalAppointments = personalAppointments,
+        //        GroupAppointments = groupAppointments
+        //    };
+
+        //    return View(viewModel);
+        //}
+
+        //public async Task<IActionResult> Index()
+        //{
+        //    var user = await _userManager.GetUserAsync(User);
+        //    var now = DateTime.Now;
+
+        //    var personalAppointments = await _context.Appointments
+        //        .Where(a => a.UserId == user.Id && !a.IsGroupMeeting && a.EndTime > now)
+        //        .ToListAsync();
+
+        //    var groupAppointments = await _context.GroupParticipants
+        //        .Include(g => g.Appointment)
+        //        .Where(g => g.UserId == user.Id && g.Appointment.EndTime > now)
+        //        .Select(g => g.Appointment)
+        //        .ToListAsync();
+
+        //    var viewModel = new AppointmentIndexViewModel
+        //    {
+        //        PersonalAppointments = personalAppointments,
+        //        GroupAppointments = groupAppointments
+        //    };
+
+        //    return View(viewModel);
+        //}
+
         public async Task<IActionResult> Index()
         {
             var user = await _userManager.GetUserAsync(User);
+            var now = DateTime.Now;
 
             var personalAppointments = await _context.Appointments
-                .Where(a => a.UserId == user.Id && !a.IsGroupMeeting)
+                .Include(a => a.Reminder)
+                .Where(a => a.UserId == user.Id && !a.IsGroupMeeting && a.EndTime > now)
                 .ToListAsync();
 
             var groupAppointments = await _context.GroupParticipants
                 .Include(g => g.Appointment)
-                .Where(g => g.UserId == user.Id)
+                .ThenInclude(a => a.Reminder)
+                .Where(g => g.UserId == user.Id && g.Appointment.EndTime > now)
                 .Select(g => g.Appointment)
                 .ToListAsync();
+
+            // Kiểm tra các lời nhắc
+            List<string> reminderMessages = new();
+            DateTime current = DateTime.Now;
+
+            var allAppointments = personalAppointments.Concat(groupAppointments).Distinct();
+
+            foreach (var appt in allAppointments)
+            {
+                if (appt.Reminder != null)
+                {
+                    var reminderTime = appt.StartTime - appt.Reminder.TimeBefore;
+                    if (reminderTime <= current && appt.StartTime > current)
+                    {
+                        reminderMessages.Add($"Bạn có cuộc hẹn '{appt.Name}' lúc {appt.StartTime:HH:mm dd/MM/yyyy} tại {appt.Location}.");
+                    }
+                }
+            }
 
             var viewModel = new AppointmentIndexViewModel
             {
                 PersonalAppointments = personalAppointments,
-                GroupAppointments = groupAppointments
+                GroupAppointments = groupAppointments,
+                ReminderMessages = reminderMessages
             };
 
             return View(viewModel);
         }
+
+
 
         public IActionResult Create()
         {
@@ -121,6 +192,17 @@ namespace QL_Lichcanhan.Controllers
             appointment.IsGroupMeeting = validUsers.Any();
             _context.Appointments.Add(appointment);
             await _context.SaveChangesAsync();
+            //them nhac nho
+            if (model.ReminderMinutesBefore > 0)
+            {
+                var reminder = new Reminder
+                {
+                    AppointmentId = model.Appointment.Id,
+                    TimeBefore = TimeSpan.FromMinutes(model.ReminderMinutesBefore)
+                };
+                _context.Reminders.Add(reminder);
+                await _context.SaveChangesAsync();
+            }
 
             if (appointment.IsGroupMeeting)
             {
@@ -142,7 +224,10 @@ namespace QL_Lichcanhan.Controllers
         {
             if (id == null) return NotFound();
 
-            var appointment = await _context.Appointments.FindAsync(id);
+            var appointment = await _context.Appointments
+                .Include(a => a.Reminder) // load luôn reminder
+                .FirstOrDefaultAsync(a => a.Id == id);
+
             if (appointment == null) return NotFound();
 
             var userId = _userManager.GetUserId(User);
@@ -159,12 +244,12 @@ namespace QL_Lichcanhan.Controllers
             var viewModel = new AppointmentEditViewModel
             {
                 Appointment = appointment,
-                CurrentParticipantEmails = participantEmails
+                CurrentParticipantEmails = participantEmails,
+                ReminderMinutesBefore = appointment.Reminder != null ? (int)appointment.Reminder.TimeBefore.TotalMinutes : 0
             };
 
             return View(viewModel);
         }
-
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, AppointmentEditViewModel model)
@@ -172,7 +257,10 @@ namespace QL_Lichcanhan.Controllers
             if (id != model.Appointment.Id) return NotFound();
 
             var userId = _userManager.GetUserId(User);
-            var appointment = await _context.Appointments.FindAsync(id);
+            var appointment = await _context.Appointments
+                .Include(a => a.Reminder)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
             if (appointment == null) return NotFound();
 
             bool isOwner = appointment.UserId == userId;
@@ -183,6 +271,7 @@ namespace QL_Lichcanhan.Controllers
             appointment.StartTime = model.Appointment.StartTime;
             appointment.EndTime = model.Appointment.EndTime;
 
+            // Cập nhật nhóm người tham gia như trước
             if (!string.IsNullOrWhiteSpace(model.EnteredEmails))
             {
                 var emails = model.EnteredEmails
@@ -209,10 +298,39 @@ namespace QL_Lichcanhan.Controllers
                 }
             }
 
+            // Xử lý reminder
+            var existingReminder = appointment.Reminder;
+            if (model.ReminderMinutesBefore > 0)
+            {
+                if (existingReminder != null)
+                {
+                    existingReminder.TimeBefore = TimeSpan.FromMinutes(model.ReminderMinutesBefore);
+                    _context.Reminders.Update(existingReminder);
+                }
+                else
+                {
+                    var newReminder = new Reminder
+                    {
+                        AppointmentId = id,
+                        TimeBefore = TimeSpan.FromMinutes(model.ReminderMinutesBefore)
+                    };
+                    _context.Reminders.Add(newReminder);
+                }
+            }
+            else
+            {
+                if (existingReminder != null)
+                {
+                    _context.Reminders.Remove(existingReminder);
+                }
+            }
+
             _context.Update(appointment);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
+
+
 
         public async Task<IActionResult> Delete(int? id)
         {
@@ -236,5 +354,29 @@ namespace QL_Lichcanhan.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
+        public async Task<IActionResult> History()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var now = DateTime.Now;
+
+            var personalAppointments = await _context.Appointments
+                .Where(a => a.UserId == user.Id && !a.IsGroupMeeting && a.EndTime <= now)
+                .ToListAsync();
+
+            var groupAppointments = await _context.GroupParticipants
+                .Include(g => g.Appointment)
+                .Where(g => g.UserId == user.Id && g.Appointment.EndTime <= now)
+                .Select(g => g.Appointment)
+                .ToListAsync();
+
+            var viewModel = new AppointmentIndexViewModel
+            {
+                PersonalAppointments = personalAppointments,
+                GroupAppointments = groupAppointments
+            };
+
+            return View(viewModel); // tạo view tương tự Index.cshtml
+        }
+
     }
 }

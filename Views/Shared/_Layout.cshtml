@@ -25,16 +25,27 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Appointment" asp-action="Index">My Appointments</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Appointment" asp-action="History">Lịch sử cuộc hẹn</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Reminder" asp-action="Index">Nhắc hẹn</a>
+                        </li>
+
                     </ul>
                     <partial name="_LoginPartial" />
                 </div>
             </div>
         </nav>
     </header>
+
     <div class="container">
         <main role="main" class="pb-3">
             @RenderBody()
         </main>
+
+        <!-- Khu vực hiển thị thông báo realtime -->
+        <div id="notificationArea" class="mt-3"></div>
     </div>
 
     <footer class="border-top footer text-muted">
@@ -42,9 +53,53 @@
             &copy; 2025 - QL_Lichcanhan - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+
+    <!-- SignalR client -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.0/signalr.min.js"></script>
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/notificationHub")
+            .build();
+
+        connection.on("ReceiveNotification", function (message) {
+            const notifyArea = document.getElementById("notificationArea");
+            if (notifyArea) {
+                const div = document.createElement("div");
+                div.classList.add("alert", "alert-info", "mt-2");
+                div.innerText = message;
+                notifyArea.prepend(div);
+            }
+            updateUnreadCount(); // cập nhật badge khi có thông báo mới
+        });
+
+        connection.start().catch(err => console.error(err));
+
+        // Hàm lấy số thông báo chưa đọc từ server
+        function updateUnreadCount() {
+            $.get('/Notification/UnreadCount', function (data) {
+                const count = data.count || 0;
+                const badge = $("#unreadCount");
+                badge.text(count);
+                if (count === 0) {
+                    badge.hide();
+                } else {
+                    badge.show();
+                }
+            });
+        }
+
+        // Cập nhật ngay khi trang load
+        $(document).ready(function () {
+            updateUnreadCount();
+            // Cập nhật mỗi 30 giây
+            setInterval(updateUnreadCount, 30000);
+        });
+    </script>
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using QL_Lichcanhan.Data;
+using QL_Lichcanhan.Hubs;
 
 namespace QL_Lichcanhan
 {
@@ -19,6 +21,14 @@ namespace QL_Lichcanhan
             builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             builder.Services.AddControllersWithViews();
+            // them service tu dong nhac
+            builder.Services.AddHostedService<QL_Lichcanhan.Services.ReminderBackgroundService>();
+
+            //dich vu de gui thong bao
+            builder.Services.AddSignalR();
+            builder.Services.AddSingleton<IUserIdProvider, NameUserIdProvider>();
+
+
 
             var app = builder.Build();
 
@@ -41,11 +51,15 @@ namespace QL_Lichcanhan
 
             app.UseAuthorization();
 
+
+
+
             app.MapControllerRoute(
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}");
             app.MapRazorPages();
 
+            app.MapHub<NotificationHub>("/notificationHub");
             app.Run();
         }
     }

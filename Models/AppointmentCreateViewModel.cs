@@ -19,5 +19,8 @@ namespace QL_Lichcanhan.Models
 
         // ✅ Danh sách email đã nhập trong form
         public string? EnteredEmails { get; set; }
+        [Display(Name = "Nhắc trước (phút)")]
+        [Range(0, int.MaxValue, ErrorMessage = "Vui lòng nhập số phút hợp lệ")]
+        public int ReminderMinutesBefore { get; set; }
     }
 }

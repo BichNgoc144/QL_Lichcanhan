@@ -2,68 +2,182 @@
 
 @{
     ViewData["Title"] = "Lịch của bạn";
+    var now = DateTime.Now;
 }
 
-<a asp-action="Create" class="btn btn-primary mb-3">+ Tạo cuộc hẹn mới</a>
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-primary">
+            <i class="bi bi-calendar3 me-2"></i>@ViewData["Title"]
+        </h1>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>Tạo cuộc hẹn mới
+        </a>
+    </div>
 
-<h2>Lịch cá nhân</h2>
-
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Tiêu đề</th>
-            <th>Địa điểm</th>
-            <th>Bắt đầu</th>
-            <th>Kết thúc</th>
-            <th>Thao tác</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var a in Model.PersonalAppointments)
-        {
-            <tr>
-                <td>@a.Name</td>
-                <td>@a.Location</td>
-                <td>@a.StartTime</td>
-                <td>@a.EndTime</td>
-                <td>
-                    <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-sm btn-warning">Sửa</a>
-                    <a asp-action="Delete" asp-route-id="@a.Id" class="btn btn-sm btn-danger">Xoá</a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-<h2 class="mt-5">Lịch nhóm tham gia</h2>
-
-@if (Model.GroupAppointments.Any())
-{
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Tiêu đề</th>
-                <th>Địa điểm</th>
-                <th>Bắt đầu</th>
-                <th>Kết thúc</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var g in Model.GroupAppointments)
+    <!-- Lịch cá nhân -->
+    <div class="card shadow-sm mb-4 border-primary">
+        <div class="card-header bg-light">
+            <h2 class="h5 mb-0">
+                <i class="bi bi-person me-2 text-primary"></i>Lịch cá nhân
+            </h2>
+        </div>
+        <div class="card-body">
+            @if (Model.PersonalAppointments.Any())
             {
-                <tr>
-                    <td>@g.Name</td>
-                    <td>@g.Location</td>
-                    <td>@g.StartTime</td>
-                    <td>@g.EndTime</td>
-                </tr>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr class="table-light">
+                                <th>Tiêu đề</th>
+                                <th>Địa điểm</th>
+                                <th>Bắt đầu</th>
+                                <th>Kết thúc</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var a in Model.PersonalAppointments)
+                            {
+                                <tr>
+                                    <td>
+                                        @a.Name
+                                        @if (a.Reminder != null)
+                                        {
+                                            <i class="bi bi-bell text-warning ms-1" title="Có nhắc nhở"></i>
+                                        }
+                                    </td>
+                                    <td>@a.Location</td>
+                                    <td>@a.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>@a.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>
+                                        @if (a.EndTime < now)
+                                        {
+                                            <span class="badge bg-secondary">Đã kết thúc</span>
+                                        }
+                                        else if (a.StartTime > now)
+                                        {
+                                            <span class="badge bg-info text-dark">Sắp diễn ra</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">Đang diễn ra</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="Edit" asp-route-id="@a.Id" asp-route-returnUrl="@Context.Request.Path" class="btn btn-outline-warning" title="Sửa">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a asp-action="Delete" asp-route-id="@a.Id" asp-route-returnUrl="@Context.Request.Path" class="btn btn-outline-danger" title="Xóa">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             }
-        </tbody>
-    </table>
-}
-else
-{
-    <p>Không có lịch nhóm nào.</p>
-}
+            else
+            {
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle me-2"></i>Chưa có lịch cá nhân nào
+                </div>
+            }
+        </div>
+    </div>
 
-               
+    <!-- Lịch nhóm -->
+    <div class="card shadow-sm border-success">
+        <div class="card-header bg-light">
+            <h2 class="h5 mb-0">
+                <i class="bi bi-people me-2 text-success"></i>Lịch nhóm tham gia
+            </h2>
+        </div>
+        <div class="card-body">
+            @if (Model.GroupAppointments.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr class="table-light">
+                                <th>Tiêu đề</th>
+                                <th>Địa điểm</th>
+                                <th>Bắt đầu</th>
+                                <th>Kết thúc</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var g in Model.GroupAppointments)
+                            {
+                                <tr>
+                                    <td>
+                                        @g.Name
+                                        @if (g.Reminder != null)
+                                        {
+                                            <i class="bi bi-bell text-warning ms-1" title="Có nhắc nhở"></i>
+                                        }
+                                    </td>
+                                    <td>@g.Location</td>
+                                    <td>@g.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>@g.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>
+                                        @if (g.EndTime < now)
+                                        {
+                                            <span class="badge bg-secondary">Đã kết thúc</span>
+                                        }
+                                        else if (g.StartTime > now)
+                                        {
+                                            <span class="badge bg-info text-dark">Sắp diễn ra</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">Đang diễn ra</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle me-2"></i>Chưa tham gia lịch nhóm nào
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+    }
+
+    .card-header {
+        background-color: #f8f9fa !important;
+        border-bottom: 1px solid #e0e0e0;
+        padding: 12px 20px;
+    }
+
+    .table th {
+        font-weight: 600;
+        background-color: #f8f9fa;
+    }
+
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.5rem;
+    }
+</style>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+}

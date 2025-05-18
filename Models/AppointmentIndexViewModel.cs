@@ -4,5 +4,6 @@
     {
         public List<Appointment> PersonalAppointments { get; set; }
         public List<Appointment> GroupAppointments { get; set; }
+        public List<string> ReminderMessages { get; set; }
     }
 }

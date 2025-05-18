@@ -1,0 +1,139 @@
+﻿@model QL_Lichcanhan.Models.AppointmentIndexViewModel
+
+@{
+    ViewData["Title"] = "Lịch sử cuộc hẹn";
+}
+
+<div class="container mt-4">
+    <!-- Header trang -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-primary">
+            <i class="bi bi-clock-history me-2"></i>@ViewData["Title"]
+        </h1>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Quay lại lịch hiện tại
+        </a>
+    </div>
+
+    <!-- Lịch sử cá nhân -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h2 class="h5 mb-0">
+                <i class="bi bi-person me-2"></i>Lịch sử cá nhân
+            </h2>
+        </div>
+        <div class="card-body">
+            @if (Model.PersonalAppointments.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr class="table-light">
+                                <th>Tiêu đề</th>
+                                <th>Địa điểm</th>
+                                <th>Thời gian bắt đầu</th>
+                                <th>Thời gian kết thúc</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var a in Model.PersonalAppointments)
+                            {
+                                <tr>
+                                    <td>@a.Name</td>
+                                    <td>@a.Location</td>
+                                    <td>@a.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>@a.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>
+                                        <span class="badge bg-success">Đã hoàn thành</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle me-2"></i>Không có lịch sử cá nhân
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Lịch sử nhóm -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h2 class="h5 mb-0">
+                <i class="bi bi-people me-2"></i>Lịch sử nhóm
+            </h2>
+        </div>
+        <div class="card-body">
+            @if (Model.GroupAppointments.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr class="table-light">
+                                <th>Tiêu đề</th>
+                                <th>Địa điểm</th>
+                                <th>Thời gian bắt đầu</th>
+                                <th>Thời gian kết thúc</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var g in Model.GroupAppointments)
+                            {
+                                <tr>
+                                    <td>@g.Name</td>
+                                    <td>@g.Location</td>
+                                    <td>@g.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>@g.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>
+                                        <span class="badge bg-success">Đã hoàn thành</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle me-2"></i>Không có lịch sử nhóm
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+    <style>
+        .card {
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .card-header {
+            background-color: #f8f9fa !important;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 12px 20px;
+        }
+
+        .table th {
+            font-weight: 600;
+            background-color: #f8f9fa;
+        }
+
+        .badge {
+            font-size: 0.85em;
+            font-weight: 500;
+            padding: 0.35em 0.65em;
+        }
+    </style>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+}
